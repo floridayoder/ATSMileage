@@ -1,0 +1,65 @@
+# macOS
+.DS_Store
+
+# Node and package managers
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs and temp
+logs/
+*.log
+*.tmp
+*.swp
+*.swo
+tmp/
+
+# Build outputs
+build/
+dist/
+coverage/
+
+# Expo
+.expo/
+.expo-shared/
+.metro-cache/
+
+# React Native - Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/app/debug.keystore
+*.keystore
+*.jks
+
+# React Native - iOS / Xcode
+ios/Pods/
+ios/build/
+ios/DerivedData/
+ios/*.xcworkspace
+ios/*.xcuserdatad
+ios/xcuserdata/
+*.dSYM
+*.dSYM.zip
+*.ipa
+*.app
+
+# Cloudflare Wrangler
+.wrangler/
+.dev.vars
+
+# IDEs
+.vscode/
+.idea/
+
+# Tooling caches
+.turbo/
+.parcel-cache/

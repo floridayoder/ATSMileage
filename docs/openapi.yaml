@@ -1,0 +1,313 @@
+openapi: 3.1.0
+info:
+  title: Mileage Tracking API
+  version: 1.0.0
+  description: API specification for the Mileage Tracking App backend.
+
+servers:
+  - url: https://api.example.com
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        userKey:
+          type: integer
+        email:
+          type: string
+
+    Vehicle:
+      type: object
+      properties:
+        vehicleKey:
+          type: integer
+        name:
+          type: string
+        bluetoothMac:
+          type: string
+        bluetoothName:
+          type: string
+        isActive:
+          type: boolean
+
+    Trip:
+      type: object
+      properties:
+        tripKey:
+          type: integer
+        vehicleKey:
+          type: integer
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        distanceMiles:
+          type: number
+        category:
+          type: string
+          enum:
+            - business
+            - personal
+            - uncategorized
+        description:
+          type: string
+
+paths:
+
+  /auth/register:
+    post:
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /auth/login:
+    post:
+      summary: Login and receive tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+
+  /auth/refresh:
+    post:
+      summary: Refresh access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: New access token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+
+  /vehicles:
+    get:
+      security:
+        - bearerAuth: []
+      summary: List vehicles
+      responses:
+        '200':
+          description: List of vehicles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Vehicle'
+
+    post:
+      security:
+        - bearerAuth: []
+      summary: Create a vehicle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                bluetoothMac:
+                  type: string
+                bluetoothName:
+                  type: string
+      responses:
+        '200':
+          description: Vehicle created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+
+  /vehicles/{vehicleKey}:
+    put:
+      security:
+        - bearerAuth: []
+      summary: Update a vehicle
+      parameters:
+        - name: vehicleKey
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                isActive:
+                  type: boolean
+      responses:
+        '200':
+          description: Vehicle updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+
+  /trips:
+    get:
+      security:
+        - bearerAuth: []
+      summary: List trips
+      parameters:
+        - name: vehicleKey
+          in: query
+          schema:
+            type: integer
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: List of trips
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Trip'
+
+    post:
+      security:
+        - bearerAuth: []
+      summary: Create a trip
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                vehicleKey:
+                  type: integer
+                startTime:
+                  type: string
+                  format: date-time
+                startLat:
+                  type: number
+                startLng:
+                  type: number
+      responses:
+        '200':
+          description: Trip created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tripKey:
+                    type: integer
+
+  /trips/{tripKey}:
+    put:
+      security:
+        - bearerAuth: []
+      summary: Update a trip
+      parameters:
+        - name: tripKey
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                endTime:
+                  type: string
+                  format: date-time
+                endLat:
+                  type: number
+                endLng:
+                  type: number
+                distanceMiles:
+                  type: number
+                category:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '200':
+          description: Trip updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tripKey:
+                    type: integer
+                  updated:
+                    type: boolean

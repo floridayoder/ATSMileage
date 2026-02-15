@@ -133,27 +133,27 @@ Benefits:
 
 ## 5. Data Model (Normalized)
 
-### ✔ D1 Schema (Initial)
+### ✔ Conceptual Schema (Initial)
 
 #### `users`
-- id
+- user_key
 - email
 - password_hash
 - created_at
 
 #### `vehicles`
-- id
-- user_id (or shared group id)
-- name
+- vehicle_key
+- user_key (or shared group id)
+- vehicle_name
 - bluetooth_mac
 - bluetooth_name
 - created_at
 - is_active
 
 #### `trips`
-- id
-- user_id (driver)
-- vehicle_id
+- trip_key
+- user_key (driver)
+- vehicle_key
 - start_time
 - end_time
 - start_lat
