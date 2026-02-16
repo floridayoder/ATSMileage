@@ -84,7 +84,7 @@ export default function BluetoothLocationPOC() {
             console.log('🔵 [Location] Attempting to request background permission...');
             const bgStatus = await Location.requestBackgroundPermissionsAsync();
             console.log('🔵 [Location] Background permission response:', bgStatus);
-            
+
             if (bgStatus?.status === 'granted') {
               console.log('✓ [Location] Background permission granted');
               addLog('system', 'Background location permission granted');
