@@ -24,16 +24,26 @@ interface LogEntry {
   details?: Record<string, any>;
 }
 
+interface DiscoveredDevice {
+  id: string;
+  name: string;
+  rssi: number | null;
+  isConnectable: boolean | null;
+  lastSeen: number;
+}
+
 export default function BluetoothLocationPOC() {
   const colorScheme = useColorScheme();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [isTracking, setIsTracking] = useState(false);
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
+  const [discoveredDevices, setDiscoveredDevices] = useState<DiscoveredDevice[]>([]);
 
   const bleManagerRef = useRef<BleManager | null>(null);
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
   const connectedDeviceRef = useRef<Device | null>(null);
+  const seenDeviceIdsRef = useRef<Set<string>>(new Set());
 
   console.log('🟢 [Explore] Component rendered');
 
@@ -146,6 +156,8 @@ export default function BluetoothLocationPOC() {
     try {
       console.log('🔵 [Bluetooth] Starting scan...');
       setIsScanning(true);
+      setDiscoveredDevices([]);
+      seenDeviceIdsRef.current.clear();
       addLog('bluetooth', 'Starting Bluetooth scan...');
 
       const bleManager = getBleManager();
@@ -165,15 +177,40 @@ export default function BluetoothLocationPOC() {
         }
 
         if (device) {
-          const details = {
-            name: device.name || 'Unknown',
-            id: device.id,
-          };
+          if (!device.name || device.name.trim().length === 0) {
+            return;
+          }
 
-          addLog('bluetooth', `Device discovered: ${device.name || 'Unknown'}`, details);
+          const deviceName = device.name;
+          const deviceId = device.id;
+          const isNew = !seenDeviceIdsRef.current.has(deviceId);
 
-          // Attempt to connect to any device that appears
-          connectToDevice(device);
+          if (isNew) {
+            seenDeviceIdsRef.current.add(deviceId);
+            addLog('bluetooth', `Device discovered: ${deviceName}`, {
+              name: deviceName,
+              id: deviceId,
+            });
+          }
+
+          setDiscoveredDevices(prev => {
+            const existingIndex = prev.findIndex(entry => entry.id === deviceId);
+            const nextEntry: DiscoveredDevice = {
+              id: deviceId,
+              name: deviceName,
+              rssi: device.rssi ?? null,
+              isConnectable: device.isConnectable ?? null,
+              lastSeen: Date.now(),
+            };
+
+            if (existingIndex === -1) {
+              return [nextEntry, ...prev];
+            }
+
+            const updated = [...prev];
+            updated[existingIndex] = { ...updated[existingIndex], ...nextEntry };
+            return updated;
+          });
         }
       });
 
@@ -190,7 +227,7 @@ export default function BluetoothLocationPOC() {
   };
 
   // Connect to a BLE device
-  const connectToDevice = async (device: Device) => {
+  const connectToDeviceById = async (deviceId: string, deviceName?: string) => {
     if (connectedDeviceRef.current) {
       addLog('system', `Already connected to ${connectedDeviceRef.current.name}. Skipping connection.`);
       return;
@@ -199,15 +236,15 @@ export default function BluetoothLocationPOC() {
     try {
       const bleManager = getBleManager();
 
-      addLog('bluetooth', `Attempting to connect to ${device.name || device.id}...`);
+      addLog('bluetooth', `Attempting to connect to ${deviceName || deviceId}...`);
 
-      const connectedDevice = await bleManager.connectToDevice(device.id);
+      const connectedDevice = await bleManager.connectToDevice(deviceId);
       connectedDeviceRef.current = connectedDevice;
       setConnectedDevice(connectedDevice);
 
-      addLog('bluetooth', `✓ Connected to ${device.name || device.id}`, {
-        id: device.id,
-        name: device.name,
+      addLog('bluetooth', `✓ Connected to ${deviceName || deviceId}`, {
+        id: deviceId,
+        name: deviceName,
       });
 
       // Stop scanning once connected
@@ -312,6 +349,7 @@ export default function BluetoothLocationPOC() {
 
   const colors = Colors[colorScheme ?? 'light'];
   const isDark = colorScheme === 'dark';
+  const primaryButtonTextColor = isDark ? '#000' : '#fff';
 
   console.log('🟢 [Explore] Rendering UI...');
 
@@ -333,7 +371,7 @@ export default function BluetoothLocationPOC() {
             onPress={startBluetoothScan}
             disabled={isScanning || !!connectedDevice}
           >
-            <Text style={styles.buttonText}>
+            <Text style={[styles.buttonText, { color: primaryButtonTextColor }]}>
               {isScanning ? 'Scanning...' : 'Start Scan'}
             </Text>
           </TouchableOpacity>
@@ -360,6 +398,51 @@ export default function BluetoothLocationPOC() {
             Tracking: {isTracking ? 'Yes ◉' : 'No'}
           </ThemedText>
         </View>
+      </View>
+
+      {/* Discovered Devices */}
+      <View style={styles.devicesSection}>
+        <View style={styles.devicesHeader}>
+          <ThemedText type="defaultSemiBold">
+            Discovered Devices ({discoveredDevices.length})
+          </ThemedText>
+          {isScanning && (
+            <Text style={{ color: colors.tint, fontWeight: '600' }}>Scanning...</Text>
+          )}
+        </View>
+        {discoveredDevices.length === 0 ? (
+          <Text style={[styles.emptyState, { color: isDark ? '#bbb' : '#777' }]}>
+            No devices yet. Start a scan to populate this list.
+          </Text>
+        ) : (
+          <ScrollView style={styles.devicesList}>
+            {discoveredDevices.map(device => (
+              <View key={device.id} style={styles.deviceRow}>
+                <View style={styles.deviceInfo}>
+                  <Text style={[styles.deviceName, { color: colors.text }]}>
+                    {device.name}
+                  </Text>
+                  <Text style={[styles.deviceMeta, { color: isDark ? '#bbb' : '#777' }]}>
+                    {device.id}
+                    {device.rssi !== null ? ` • RSSI ${device.rssi}` : ''}
+                    {device.isConnectable === false ? ' • Not connectable' : ''}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[
+                    styles.deviceConnectButton,
+                    { backgroundColor: colors.tint },
+                    connectedDevice && styles.buttonDisabled,
+                  ]}
+                  onPress={() => connectToDeviceById(device.id, device.name)}
+                  disabled={!!connectedDevice}
+                >
+                  <Text style={[styles.deviceConnectText, { color: primaryButtonTextColor }]}>Connect</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+        )}
       </View>
 
       {/* Logs Section */}
@@ -482,6 +565,54 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  devicesSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  devicesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  devicesList: {
+    maxHeight: 180,
+  },
+  deviceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    marginBottom: 6,
+    borderRadius: 6,
+    backgroundColor: 'rgba(0,0,0,0.03)',
+  },
+  deviceInfo: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  deviceName: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  deviceMeta: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  deviceConnectButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  deviceConnectText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  emptyState: {
+    fontSize: 12,
   },
   logsList: {
     flex: 1,

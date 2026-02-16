@@ -17,7 +17,8 @@
         "UIBackgroundModes": [
           "location"
         ]
-      }
+      },
+      "appleTeamId": "ZGKRC69823"
     },
     "android": {
       "adaptiveIcon": {
