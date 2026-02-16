@@ -10,7 +10,14 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.floridayoder.mileagepoc"
+      "bundleIdentifier": "com.floridayoder.mileagepoc",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs your location to track mileage while driving.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs your location in the background to track mileage while driving.",
+        "UIBackgroundModes": [
+          "location"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
