@@ -16,6 +16,9 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs your location in the background to track mileage while driving.",
         "UIBackgroundModes": [
           "location"
+        ],
+        "UISupportedExternalAccessoryProtocols": [
+          "com.floridayoder.mileagepoc.classic"
         ]
       },
       "appleTeamId": "ZGKRC69823"
