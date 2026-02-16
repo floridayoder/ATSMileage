@@ -57,7 +57,8 @@
           }
         }
       ],
-      "react-native-ble-plx"
+      "react-native-ble-plx",
+      "react-native-audio-api"
     ],
     "experiments": {
       "typedRoutes": true,

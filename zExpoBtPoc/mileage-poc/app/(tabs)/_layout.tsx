@@ -35,7 +35,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="classic"
         options={{
-          title: 'Classic BT',
+          title: 'AVRoute',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="car.fill" color={color} />,
         }}
       />
