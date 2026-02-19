@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import * as Location from 'expo-location';
 import { AudioManager, type AudioDeviceInfo, type AudioDevicesInfo } from 'react-native-audio-api';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -39,6 +40,9 @@ const isExternalRoute = (outputs: AudioDeviceInfo[]) =>
 export default function AvAudioRoutePOC() {
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [currentOutputs, setCurrentOutputs] = useState<AudioDeviceInfo[]>([]);
+    const [currentLocation, setCurrentLocation] = useState<Location.LocationObjectCoords | null>(null);
+    const [isTrackingLocation, setIsTrackingLocation] = useState(false);
+    const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
     const lastRouteSignatureRef = useRef<string>('');
     const lastExternalRef = useRef<boolean>(false);
 
@@ -103,8 +107,73 @@ export default function AvAudioRoutePOC() {
             void fetchCurrentRoute(event?.reason);
         });
 
+        const startLocationTracking = async () => {
+            try {
+                const { status: locationStatus } = await Location.requestForegroundPermissionsAsync();
+                if (locationStatus !== 'granted') {
+                    addLog('Foreground location permission denied');
+                    return;
+                }
+
+                try {
+                    const bgStatus = await Location.requestBackgroundPermissionsAsync();
+                    if (bgStatus?.status !== 'granted') {
+                        addLog(`Background location permission denied: ${bgStatus?.status || 'unknown'}`);
+                    }
+                } catch (bgError) {
+                    addLog(
+                        `Background permission error: ${bgError instanceof Error ? bgError.message : 'Unknown error'}`
+                    );
+                }
+
+                if (locationSubscriptionRef.current) {
+                    addLog('Location tracking already active');
+                    return;
+                }
+
+                addLog('Starting location tracking (every 5 seconds)...');
+                setIsTrackingLocation(true);
+
+                const subscription = await Location.watchPositionAsync(
+                    {
+                        accuracy: Location.Accuracy.High,
+                        timeInterval: 5000,
+                        distanceInterval: 0,
+                    },
+                    location => {
+                        const { latitude, longitude, speed, timestamp } = location.coords;
+                        const speedKmH = speed ? (speed * 3.6).toFixed(2) : 'N/A';
+                        const dateStr = new Date(timestamp).toLocaleTimeString('en-US', {
+                            hour12: false,
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                        });
+
+                        setCurrentLocation(location.coords);
+                        addLog(
+                            `Location update: ${latitude.toFixed(6)}, ${longitude.toFixed(6)} (${speedKmH} km/h @ ${dateStr})`
+                        );
+                    }
+                );
+
+                locationSubscriptionRef.current = subscription;
+            } catch (error) {
+                addLog(
+                    `Failed to start tracking: ${error instanceof Error ? error.message : 'Unknown error'}`
+                );
+                setIsTrackingLocation(false);
+            }
+        };
+
+        void startLocationTracking();
+
         return () => {
             subscription?.remove();
+            if (locationSubscriptionRef.current) {
+                locationSubscriptionRef.current.remove();
+                locationSubscriptionRef.current = null;
+            }
         };
     }, []);
 
@@ -126,6 +195,22 @@ export default function AvAudioRoutePOC() {
                     </ThemedText>
                     <View style={styles.routeCard}>
                         <ThemedText style={styles.routeText}>{formatOutputs(currentOutputs)}</ThemedText>
+                    </View>
+                </View>
+
+                <View style={styles.section}>
+                    <ThemedText type="subtitle" style={styles.sectionTitle}>
+                        Location Tracking
+                    </ThemedText>
+                    <ThemedText style={styles.sectionSubtitle}>
+                        Tracking: {isTrackingLocation ? 'Yes' : 'No'}
+                    </ThemedText>
+                    <View style={styles.routeCard}>
+                        <ThemedText style={styles.routeText}>
+                            {currentLocation
+                                ? `${currentLocation.latitude.toFixed(6)}, ${currentLocation.longitude.toFixed(6)}`
+                                : 'No location yet.'}
+                        </ThemedText>
                     </View>
                 </View>
 
