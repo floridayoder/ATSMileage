@@ -2,7 +2,7 @@
 
 ## 📌 Purpose
 
-This project aims to create a lightweight, secure, and reliable mileage‑tracking system for two users (Tony and spouse) and multiple vehicles. The app should automatically detect when a user connects to a vehicle via Bluetooth, track mileage using location services, and store trip data in a Cloudflare‑hosted backend.
+This project aims to create a lightweight, secure, and reliable mileage‑tracking system for two users (Tony and spouse) and multiple vehicles. The app should automatically detect when a user connects to a vehicle via AVAudioSession, track mileage using location services, and store trip data in an Azure hosted backend.
 
 The goals are:
 
@@ -19,26 +19,25 @@ The system consists of three major components:
 
 ## 1. **Mobile App (React Native + Expo)**
 - Runs on two iPhones.
-- Detects Bluetooth connections to known vehicles.
+- Detects vehicle connections via **AVAudioSession**.
 - Tracks location and calculates mileage.
 - Prompts for business/personal classification.
 - Syncs trips and vehicles with backend APIs.
-- Uses Expo with a **custom dev client** to support Bluetooth libraries.
 
-## 2. **Backend (Cloudflare Workers + D1 Database)**
+## 2. **Backend (Azure Functions + Azure SQL Database)**
 - Exposes secure REST APIs for:
   - Authentication
   - Vehicle management
   - Trip creation and updates
   - User data syncing
-- Stores normalized relational data in **D1**.
+- Stores normalized relational data in **Azure SQL Database – Basic Tier (5 DTUs)**.
 - Uses environment‑stored secrets for JWT signing and optional HMAC request signing.
 
-## 3. **Cloudflare Infrastructure**
-- Cloudflare Workers for compute.
-- Cloudflare D1 for relational storage.
-- Optional future use of Cloudflare KV for caching.
-- Cloudflare security features (rate limiting, IP reputation, secret storage).
+## 3. **Azure Infrastructure**
+- Azure Functions for compute.
+- Azure SQL Database for relational storage.
+- Optional future use of Azure Blob Storage for caching.
+- Azure security features (rate limiting, IP reputation, secret storage).
 
 ---
 
@@ -54,10 +53,10 @@ This section captures all decisions made during the planning session.
 - Phones are just clients; no per‑device identity required.
 
 ### ✔ API Security Model
-- Public API behind Cloudflare.
-- Secrets stored in Cloudflare environment variables.
-- Optional HMAC‑signed requests for integrity.
-- No Cloudflare Zero Trust (too much friction for mobile apps).
+- Public API behind Azure API Management.
+- Secrets stored in Azure Key Vault.
+- HMAC‑signed requests for integrity.
+- Rate limiting to prevent abuse.
 
 ### ✔ GitHub‑Safe
 - Codebase can be public.
@@ -65,21 +64,25 @@ This section captures all decisions made during the planning session.
 
 ---
 
-## 2. Vehicle Identification & Bluetooth Mapping
+## 2. Vehicle Identification
 
-### ✔ One‑Time Pairing Flow
-- App scans for nearby Bluetooth devices.
-- User selects the car’s Bluetooth device.
+### Initial set-up
+- At app launch (after authentication), if no vehicles are registered, prompt user to add a vehicle.  Ensure with the user that the phone is already connected to the car's AVAudioSession to capture the audio route name (and if possible, the audio profile or any stable identifier). This will be the primary method for identifying the vehicle in future trips.
+- User names the vehicle.
 - App stores:
   - Vehicle name
-  - Bluetooth MAC address
-  - Bluetooth display name
+  - Audio route name (from AVAudioSession)
+  - Optional: Bluetooth MAC address (if available and stable)
+  - Optional: audio profile (A2DP, HFP, CarAudio, etc.)
 - Backend stores the mapping.
 - Both users’ apps sync the same vehicle list.
 
-### ✔ MAC Address as Primary Identifier
-- More reliable than Bluetooth name.
-- Ensures correct vehicle detection even if names are generic.
+NOTE: Apple iOS does not provide stable Bluetooth MAC addresses for connected devices, and Bluetooth scanning is unreliable for identifying vehicles. Instead, the app relies on AVAudioSession to detect when the phone connects to a car's audio system, which provides a stable and unique identifier for each vehicle.
+
+### Additional vehicles
+- User can add more vehicles manually.
+- For each new vehicle, user must first connect to it via AVAudioSession to capture the audio route name and profile.  When user selects to "add new vehicle," prompt them to connect to the new vehicle's AVAudioSession first, then capture the audio route name and profile to create a new vehicle entry in the app. This ensures that each vehicle has a stable identifier for future detection.
+- This ensures all vehicles have a stable identifier for future detection.
 
 ---
 
@@ -87,7 +90,9 @@ This section captures all decisions made during the planning session.
 
 ### ✔ Trip Start Logic
 Trip “intent” begins when:
-- Bluetooth connects to a known vehicle.
+- AVAudioSession connects to a known vehicle.
+
+App must be in the foreground or background (with appropriate permissions) to detect this event. The trip is not officially “started” until movement is detected, but this connection event signals the user’s intent to drive.
 
 Actual trip begins when:
 - Movement is detected (speed > ~3–5 mph).
@@ -103,7 +108,7 @@ Benefits:
 - Switches to high‑frequency updates during active trip.
 
 ### ✔ Trip End Logic
-- Trip ends when Bluetooth disconnects.
+- Trip ends when AVAudioSession disconnects.
 - Grace period to avoid false splits (e.g., brief signal loss).
 - Optional future enhancement: auto‑end after long idle periods.
 
@@ -111,7 +116,7 @@ Benefits:
 
 ## 4. Trip Categorization (Business vs Personal)
 
-### ✔ Prompt on Bluetooth Connect
+### ✔ Prompt on AVAudioSession Connect
 - Non‑blocking modal/banner:
   - Business
   - Personal
@@ -145,8 +150,10 @@ Benefits:
 - vehicle_key
 - user_key (or shared group id)
 - vehicle_name
-- bluetooth_mac
-- bluetooth_name
+- audio_route_name
+- audio_profile
+- vehicle_make
+- vehicle_color
 - created_at
 - is_active
 

@@ -1,12 +1,12 @@
 # Mileage Tracking API Contract
 
-This document defines the REST API used by the React Native app to communicate with the Cloudflare Workers backend. It is aligned with the D1 schema and the OpenAPI specification.
+This document defines the REST API used by the React Native app to communicate with the Azure Functions backend. It is aligned with the Azure SQL Database schema and the OpenAPI specification.
 
 ---
 
 # 1. Authentication
 
-## POST /auth/register
+~~ ## POST /auth/register
 Create a new user.
 
 ### Request
@@ -21,7 +21,7 @@ Create a new user.
       "email": "user@example.com"
     }
 
----
+--- ~~
 
 ## POST /auth/login
 Authenticate a user and return tokens.
@@ -69,8 +69,10 @@ List all vehicles for the authenticated user.
       {
         "vehicleKey": 10,
         "name": "Camry",
-        "bluetoothMac": "AA:BB:CC:DD:EE:FF",
-        "bluetoothName": "TOYOTA CAMRY",
+        "audioRouteName": "Car Audio",
+        "audioProfile": "A2DP",
+        "vehicleMake": "Toyota",
+        "vehicleColor": "Blue",
         "isActive": true
       }
     ]
@@ -78,21 +80,25 @@ List all vehicles for the authenticated user.
 ---
 
 ## POST /vehicles
-Create a new vehicle and Bluetooth mapping.
+Create a new vehicle and AVAudioSession mapping.
 
 ### Request
     {
       "name": "Camry",
-      "bluetoothMac": "AA:BB:CC:DD:EE:FF",
-      "bluetoothName": "TOYOTA CAMRY"
+      "audioRouteName": "Car Audio",
+      "audioProfile": "A2DP",
+      "vehicleMake": "Toyota",
+      "vehicleColor": "Blue"
     }
 
 ### Response
     {
       "vehicleKey": 10,
       "name": "Camry",
-      "bluetoothMac": "AA:BB:CC:DD:EE:FF",
-      "bluetoothName": "TOYOTA CAMRY",
+      "audioRouteName": "Car Audio",
+      "audioProfile": "A2DP",
+      "vehicleMake": "Toyota",
+      "vehicleColor": "Blue",
       "isActive": true
     }
 
